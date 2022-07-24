@@ -89,6 +89,7 @@
 !*.xmp
 
 # added by liuhz
+!*.md
 /*.sim
 /*.runs
 /*.ioplanning
