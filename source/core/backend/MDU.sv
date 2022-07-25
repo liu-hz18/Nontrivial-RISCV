@@ -10,6 +10,7 @@ module MDU (
 
     input logic flush,
     input op_t op,
+    input inst_type_t inst_type,
     input word_t gpr_rs1,
     input word_t gpr_rs2,
 

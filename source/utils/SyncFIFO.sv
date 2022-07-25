@@ -22,7 +22,7 @@ module SyncFIFO #(
 
 localparam int FIFO_INDEX_WIDTH = $clog2(DEPTH);
 typedef logic [LINE_WIDTH-1:0] fifo_line_t;
-fifo_line_t arr[DEPTH-1:0];
+fifo_line_t arr[DEPTH-1:0]; // ring buffer
 
 // 读写指针均添加一个extra bit用来指示是否超过 arr 顶
 // 写指针 指向 将要写位置(队列尾的下一个)

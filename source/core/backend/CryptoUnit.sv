@@ -5,6 +5,7 @@ module CryptoUnit (
 
     input logic flush,
     input op_t op,
+    input inst_type_t inst_type,
 
     input word_t rs1,
     input word_t rs2,
@@ -97,9 +98,8 @@ always_ff @(posedge clk) begin
     end
 end
 
-// TODO: refine this judgement to IDU stage
 logic is_aes_sm4;
-assign is_aes_sm4 = (op == OP_AES32_DSI) || (op == OP_AES32_DSMI) || (op == OP_AES32_ESI) || (op == OP_AES32_ESMI) || (op == OP_SM4_ED) || (op == OP_SM4_KS);
+assign is_aes_sm4 = inst_type.is_aes_sm4;
 
 always_comb begin
     crypto_state_nxt = crypto_state_now;

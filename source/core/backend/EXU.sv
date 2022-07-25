@@ -29,11 +29,8 @@ module EXU (
     // BPU prediction results
     input word_t bpu_predict_target,
     input logic bpu_predict_valid,
-    input logic is_branch_jump,
-    input logic is_branch,
-    input logic is_call,
-    input logic is_ret,
-    input logic same_link_regs,
+    // inst type
+    input inst_type_t inst_type,
 
     // exception from frontend
     input except_t exception_in,
@@ -135,7 +132,7 @@ always_comb begin: branch_amend
     end
     OP_JALR: begin 
         branch_should_take = 1'b1; actual_branch_target = addi_u; 
-        bpu_update_req.btb_type = is_ret ? RETURN : INDIRECT;
+        bpu_update_req.btb_type = inst_type.is_ret ? RETURN : INDIRECT;
     end
     default: begin 
         branch_should_take = 1'b0; actual_branch_target = '0;
@@ -144,15 +141,15 @@ always_comb begin: branch_amend
     endcase
 end
 // fix BPU prediction
-assign bpu_update_req.valid = ~flush & is_branch_jump;
+assign bpu_update_req.valid = ~flush & inst_type.is_branch_jump;
 assign bpu_update_req.pc = pc_plus4;
 assign bpu_update_req.is_miss_predict = ~(bpu_predict_valid && (actual_branch_target == bpu_predict_target));
 assign bpu_update_req.actual_target = actual_branch_target;
 assign bpu_update_req.actual_taken = branch_should_take;
-assign bpu_update_req.is_branch_inst = is_branch;
-assign bpu_update_req.is_call_inst = is_call;
-assign bpu_update_req.is_ret_inst = is_ret;
-assign bpu_update_req.same_link_regs = same_link_regs;
+assign bpu_update_req.is_branch_inst = inst_type.is_branch;
+assign bpu_update_req.is_call_inst = inst_type.is_call;
+assign bpu_update_req.is_ret_inst = inst_type.is_ret;
+assign bpu_update_req.same_link_regs = inst_type.same_link_regs;
 // PC redirect
 assign redirect_valid = (branch_should_take ^ bpu_predict_valid) || (bpu_predict_valid && branch_should_take && (actual_branch_target != bpu_predict_target));
 assign redirect_pc = branch_should_take ? actual_branch_target : pc_plus4;
@@ -285,6 +282,7 @@ MDU MDU (
     .rst(rst),
     .flush(flush),
     .op(op),
+    .inst_type(inst_type),
     .gpr_rs1(gpr_rs1),
     .gpr_rs2(gpr_rs2),
     .mul_ss(mul_ss),
@@ -305,6 +303,7 @@ FPU FPU (
     .rst(rst),
     .flush(flush),
     .op(op),
+    .inst_type(inst_type),
     .fpr_rs1(fpr_rs1),
     .fpr_rs2(fpr_rs2),
     .fpr_rs3(fpr_rs3),
@@ -320,6 +319,7 @@ CryptoUnit CryptoUnit (
     .rst(rst),
     .flush(flush),
     .op(op),
+    .inst_type(inst_type),
     .rs1(gpr_rs1),
     .rs2(gpr_rs2),
     .bs(inst[31:30]),
@@ -373,7 +373,7 @@ assign store_word_misaligned = ((op == OP_SW) || (op == OP_FSWS)) ? (|addi_u[1:0
 always_comb begin: exu_exception_check
     exu_exception = exception_in;
     // misaligned
-    exu_exception.fetch_misalign = is_branch_jump ? (|actual_branch_target[1:0]) : 1'b0;
+    exu_exception.fetch_misalign = inst_type.is_branch_jump ? (|actual_branch_target[1:0]) : 1'b0;
     exu_exception.load_misalign = load_half_misaligned | load_word_misaligned;
     exu_exception.store_misalign = store_half_misaligned | store_word_misaligned;
 end

@@ -88,11 +88,8 @@ EXU EXU (
     // BPU prediction results
     .bpu_predict_target(packet.bpu_predict_target),
     .bpu_predict_valid(packet.valid),
-    .is_branch_jump(packet.is_branch_jump),
-    .is_branch(packet.is_branch),
-    .is_call(packet.is_call),
-    .is_ret(packet.is_ret),
-    .same_link_regs(packet.same_link_regs),
+    // inst type
+    .inst_type(packet.inst_type),
     // exception from frontend
     .exception_in(packet.exception),
     

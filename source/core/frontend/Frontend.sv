@@ -137,7 +137,7 @@ logic idu_gpr_we;
 gpr_addr_t idu_gpr_waddr;
 gpr_addr_t idu_gpr_raddr1, idu_gpr_raddr2;
 except_t idu_exception;
-logic idu_is_branch_jump, idu_is_branch, idu_is_call, idu_is_ret, idu_same_link_regs;
+inst_type_t idu_inst_type;
 // fpr
 fpr_addr_t idu_fpr_rd, idu_fpr_rs1, idu_fpr_rs2, idu_fpr_rs3;
 logic idu_fpr_we, idu_fpr_re1, idu_fpr_re2, idu_fpr_re3;
@@ -159,12 +159,8 @@ IDU #(
     .op(idu_op),
     .imm(idu_imm),
     .shamt(idu_shamt),
-    // BPU call/ret
-    .is_branch_jump(idu_is_branch_jump),
-    .is_branch(idu_is_branch),
-    .is_call(idu_is_call),
-    .is_ret(idu_is_ret),
-    .same_link_regs(idu_same_link_regs),
+    // inst type
+    .inst_type(idu_inst_type),
     // gpr
     .gpr_we(idu_gpr_we),
     .gpr_waddr(idu_gpr_waddr),
@@ -195,11 +191,7 @@ assign idu_packet = {
     idu_imm,
     idu_shamt,
 
-    idu_is_branch_jump,
-    idu_is_branch,
-    idu_is_call,
-    idu_is_ret,
-    idu_same_link_regs,
+    idu_inst_type,
 
     idu_gpr_waddr,
     idu_gpr_we,

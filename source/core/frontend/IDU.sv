@@ -167,11 +167,7 @@ module IDU #(
     output word_t imm,
     output logic[4:0] shamt,
     // BPU call/ret
-    output logic is_branch_jump,
-    output logic is_branch,
-    output logic is_call,
-    output logic is_ret,
-    output logic same_link_regs,
+    output inst_type_t inst_type,
     // regfile R/W signals
     output logic gpr_we,
     output gpr_addr_t gpr_waddr,
@@ -223,13 +219,23 @@ function logic is_link(input logic[4:0] rfaddr);
     return (rfaddr == 5'd1 || rfaddr == 5'd5);
 endfunction;
 
-assign is_branch_jump = (opcode == OPCODE_BRANCH) || (opcode == OPCODE_JALR) || (opcode == OPCODE_JAL);
-assign is_branch = (opcode == OPCODE_BRANCH);
+assign inst_type.is_branch_jump = (opcode == OPCODE_BRANCH) || (opcode == OPCODE_JALR) || (opcode == OPCODE_JAL);
+assign inst_type.is_branch = (opcode == OPCODE_BRANCH);
 // call should push return address to RAS
-assign is_call = ((opcode == OPCODE_JAL) && is_link(rd)) || ((opcode == OPCODE_JALR) && is_link(rd));
+assign inst_type.is_call = ((opcode == OPCODE_JAL) && is_link(rd)) || ((opcode == OPCODE_JALR) && is_link(rd));
 // ret should pop RAS
-assign is_ret = (opcode == OPCODE_JALR) && is_link(rs1);
-assign same_link_regs = is_link(rs1) && (rs1 == rd);
+assign inst_type.is_ret = (opcode == OPCODE_JALR) && is_link(rs1);
+assign inst_type.same_link_regs = is_link(rs1) && (rs1 == rd);
+assign inst_type.is_aes_sm4 = (opcode == OPCODE_REG) && (funct3 == 3'b0) && (funct7[4]);
+assign inst_type.is_fpu_multi_cycle = (opcode == OPCODE_FMADD) || (opcode == OPCODE_FMSUB) || (opcode == OPCODE_FNMSUB) || (opcode == OPCODE_FNMADD) || 
+                                     ((opcode == OPCODE_FLOAT) && ((funct7 == 7'b0000000) || (funct7 == 7'b0000100) || (funct7 == 7'b0001000) || (funct7 == 7'b0001100) || (funct7 == 7'b0101100) || (funct7 == 7'b0010100) || (funct7 == 7'b1100000) || (funct7 == 7'b1010000) || (funct7 == 7'b1101000)));
+assign inst_type.is_mdu_multi_cycle = (opcode == OPCODE_REG) && ((funct7 == 7'b0000001) || (funct7 == 7'b0000101));
+assign inst_type.is_load = (opcode == OPCODE_LOAD) || (opcode == OPCODE_FLOAD);
+assign inst_type.is_store = (opcode == OPCODE_STORE) || (opcode == OPCODE_FSTORE);
+// !NOTE: `is_amo` not include `is_lr` and `ls_sc`
+assign inst_type.is_amo = (opcode == OPCODE_AMO) && (~funct7[3]);
+assign inst_type.is_lr = (opcode == OPCODE_AMO) && (funct7[6:2] == 5'b00010);
+assign inst_type.is_sc = (opcode == OPCODE_AMO) && (funct7[6:2] == 5'b00011);
 
 // decoder
 always_comb begin
@@ -491,10 +497,10 @@ always_comb begin
     // RV32A Extension
     OPCODE_AMO: begin
         unique case(funct7[6:2])
+        5'b00000: `INST_W(OP_AMOADD,  rs1, rs2, rd)
+        5'b00001: `INST_W(OP_AMOSWAP,  rs1, rs2, rd)
         5'b00010: `INST_W(OP_LR,  rs1, 5'b0, rd)
         5'b00011: `INST_W(OP_SC,  rs1, rs2, rd)
-        5'b00001: `INST_W(OP_AMOSWAP,  rs1, rs2, rd)
-        5'b00000: `INST_W(OP_AMOADD,  rs1, rs2, rd)
         5'b00100: `INST_W(OP_AMOXOR,  rs1, rs2, rd)
         5'b01100: `INST_W(OP_AMOAND,  rs1, rs2, rd)
         5'b01000: `INST_W(OP_AMOOR,  rs1, rs2, rd)

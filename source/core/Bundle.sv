@@ -5,12 +5,6 @@ import bitutils::*;
 import exception::*;
 import micro_ops::*;
 
-typedef enum {
-    nop,
-    ret,
-    call
-} inst_type_t;
-
 typedef enum logic[1:0] {
     BRANCH,
     JUMP,
@@ -49,7 +43,7 @@ typedef  struct packed {
 
 // self-defined Bus Signals.
 // do handshake using `valid` and `ready` signal.
-// �? word �?1个传输单位，支持突发读写，最多突�? 16 word 突发读写
+// �? word �?1个传输单位，支持突发读写，最多突�? 16 word 突发读写
 typedef struct packed {
     // write passage
     // W addr passage
@@ -91,6 +85,22 @@ typedef struct packed {
 } bus_query_resp_t;
 
 typedef struct packed {
+    logic is_branch_jump;
+    logic is_branch;
+    logic is_call;
+    logic is_ret;
+    logic same_link_regs;
+    logic is_aes_sm4;
+    logic is_fpu_multi_cycle;
+    logic is_mdu_multi_cycle;
+    logic is_load;
+    logic is_store;
+    logic is_amo;
+    logic is_lr;
+    logic is_sc;
+} inst_type_t;
+
+typedef struct packed {
     logic valid;
     word_t pc;
     word_t inst;
@@ -104,11 +114,7 @@ typedef struct packed {
     logic [4:0] shamt;
 
     // bpu control
-    logic is_branch_jump;
-    logic is_branch;
-    logic is_call;
-    logic is_ret;
-    logic same_link_regs;
+    inst_type_t inst_type;
     
     gpr_addr_t gpr_rd;
     logic gpr_we;
