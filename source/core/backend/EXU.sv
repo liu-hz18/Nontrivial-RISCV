@@ -239,10 +239,10 @@ always_comb begin: gpr_alu
         xperm_nibble(gpr_rs2[15:12], gpr_rs1), xperm_nibble(gpr_rs2[11:8], gpr_rs1),  xperm_nibble(gpr_rs2[7:4],   gpr_rs1), xperm_nibble(gpr_rs2[3:0],   gpr_rs1)
     };
     OP_XPERM8: gpr_wdata = { xperm_byte(gpr_rs2[31:24], gpr_rs1), xperm_byte(gpr_rs2[23:16], gpr_rs1), xperm_byte(gpr_rs2[15:8], gpr_rs1), xperm_byte(gpr_rs2[7:0], gpr_rs1) };
-    // TODO: RV32 Zbc Extension
+    // RV32 Zbc Extension
     OP_CLMUL: gpr_wdata = clmul[31:0];
     OP_CLMULH:gpr_wdata = clmul[63:32];
-    OP_CLMULR:gpr_wdata = clmulr[62:31]; // TODO: figure out why [62:31] ?
+    OP_CLMULR:gpr_wdata = clmul[62:31];
     // RV32 Zbs Extensions
     OP_BCLR: gpr_wdata = gpr_rs1 & (~onehot_rs2);
     OP_BCLRI:gpr_wdata = gpr_rs1 & (~onehot_imm);
@@ -293,7 +293,6 @@ MDU MDU (
     .rem_s(rem_s),
     .rem_u(rem_u),
     .clmul(clmul),
-    .clmulr(clmulr),
     .busy(mdu_busy)
 );
 

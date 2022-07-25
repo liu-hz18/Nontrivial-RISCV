@@ -298,6 +298,13 @@
           <Attr Name="UsedIn" Val="simulation"/>
         </FileInfo>
       </File>
+      <File Path="$PPRDIR/source/utils/clmul.sv">
+        <FileInfo>
+          <Attr Name="UsedIn" Val="synthesis"/>
+          <Attr Name="UsedIn" Val="implementation"/>
+          <Attr Name="UsedIn" Val="simulation"/>
+        </FileInfo>
+      </File>
       <File Path="$PPRDIR/source/utils/reset_sync.sv">
         <FileInfo>
           <Attr Name="UsedIn" Val="synthesis"/>
@@ -611,7 +618,6 @@
     <FileSet Name="divider_signed" Type="BlockSrcs" RelSrcDir="$PSRCDIR/divider_signed" RelGenDir="$PGENDIR/divider_signed">
       <File Path="$PSRCDIR/sources_1/ip/divider_signed/divider_signed.xci">
         <FileInfo>
-          <Attr Name="AutoDisabled" Val="1"/>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
@@ -625,7 +631,6 @@
     <FileSet Name="divider_unsigned" Type="BlockSrcs" RelSrcDir="$PSRCDIR/divider_unsigned" RelGenDir="$PGENDIR/divider_unsigned">
       <File Path="$PSRCDIR/sources_1/ip/divider_unsigned/divider_unsigned.xci">
         <FileInfo>
-          <Attr Name="AutoDisabled" Val="1"/>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
@@ -639,7 +644,6 @@
     <FileSet Name="mult_ss" Type="BlockSrcs" RelSrcDir="$PSRCDIR/mult_ss" RelGenDir="$PGENDIR/mult_ss">
       <File Path="$PSRCDIR/sources_1/ip/mult_ss/mult_ss.xci">
         <FileInfo>
-          <Attr Name="AutoDisabled" Val="1"/>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
@@ -653,7 +657,6 @@
     <FileSet Name="mult_uu" Type="BlockSrcs" RelSrcDir="$PSRCDIR/mult_uu" RelGenDir="$PGENDIR/mult_uu">
       <File Path="$PSRCDIR/sources_1/ip/mult_uu/mult_uu.xci">
         <FileInfo>
-          <Attr Name="AutoDisabled" Val="1"/>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
@@ -667,7 +670,6 @@
     <FileSet Name="mult_su" Type="BlockSrcs" RelSrcDir="$PSRCDIR/mult_su" RelGenDir="$PGENDIR/mult_su">
       <File Path="$PSRCDIR/sources_1/ip/mult_su/mult_su.xci">
         <FileInfo>
-          <Attr Name="AutoDisabled" Val="1"/>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
           <Attr Name="UsedIn" Val="simulation"/>
