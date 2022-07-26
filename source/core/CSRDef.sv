@@ -1,5 +1,5 @@
 // Control Stata Registers
-// WPRI: Reserved Writes Preserve Values, Reads Ignore Value
+// WPRI: Reserved Writes Preserve Values, Reads Ignore Value (read-only zero)
 // WLRL: Write/Read Only Legal Value
 // WARL: Write Any Values, Reads Legal Value
 
@@ -8,13 +8,11 @@ package csr_def;
 import bitutils::*;
 
 typedef enum logic[1:0] {
-    MODE_U = 0,
-    MODE_S = 1,
+    MODE_U = 0, // 00
+    MODE_S = 1, // 01
     MODE_H = 2, // Hypervisor
-    MODE_M = 3
+    MODE_M = 3  // 11
 } cpu_mode_t;
-
-cpu_mode_t cpu_mode;
 
 // Machine Mode CSRs
 typedef struct packed {
@@ -22,46 +20,175 @@ typedef struct packed {
     logic [3:0] _wlrl0;
     logic [25:0] extensions; // WARL. [25:0] = {Z, Y, ..., B, A}
 } misa_t;
+parameter misa_t MISA_INIT = { 
+    2'b01, // mxl
+    4'b0,  // WLRL
+    1'b0,  // A
+    1'b1,  // Bitmanip
+    1'b0,  // C Extension
+    1'b0,  // D
+    1'b0,  // E
+    1'b1,  // F
+    1'b0,  // G, Reserved
+    1'b0,  // Hypervisor
+    1'b1,  // I
+    1'b0,  // Dynamically Translated Languages Extension
+    1'b0,  // K, Reserved
+    1'b0,  // L, Reserved
+    1'b1,  // M
+    1'b0,  // User-level Interrupts Extension
+    1'b0,  // O, Reserved
+    1'b0,  // P, Packed-SIMD
+    1'b0,  // Q
+    1'b0,  // R, Reserved
+    1'b1,  // Supervisor mode implemented
+    1'b0,  // T
+    1'b1,  // User mode implemented
+    1'b0,  // V
+    1'b0,  // W
+    1'b0,  // Non-Standard extension
+    1'b0,  // Y, Reserved
+    1'b0   // Z, Reserved
+};
+parameter misa_t MISA_WMASK = {
+    2'b00,
+    4'b0,
+    1'b0,  // A
+    1'b1,  // Bitmanip
+    1'b0,  // C Extension
+    1'b0,  // D
+    1'b0,  // E
+    1'b1,  // F
+    1'b0,  // G, Reserved
+    1'b0,  // Hypervisor
+    1'b0,  // I
+    1'b0,  // Dynamically Translated Languages Extension
+    1'b0,  // K, Reserved
+    1'b0,  // L, Reserved
+    1'b1,  // M
+    1'b0,  // User-level Interrupts Extension
+    1'b0,  // O, Reserved
+    1'b0,  // P, Packed-SIMD
+    1'b0,  // Q
+    1'b0,  // R, Reserved
+    1'b1,  // Supervisor mode implemented
+    1'b0,  // T
+    1'b1,  // User mode implemented
+    1'b0,  // V
+    1'b0,  // W
+    1'b0,  // Non-Standard extension
+    1'b0,  // Y, Reserved
+    1'b0   // Z, Reserved
+};
 
 typedef struct packed {
     logic [24:0] bank;
     logic [6:0] offset;
-} mvendorid_t;
-
+} mvendorid_t; // read-only
+parameter mvendorid_t MVENDORID_INIT = '0; // non-commercial implementation
 typedef logic [31:0] marchid_t;
+parameter marchid_t MARCHID_INIT = '0; // return 0 to indicate the field is not implemented
 typedef logic [31:0] mimpid_t;
+parameter mimpid_t MIMPID_INIT = '0; // provides a unique encoding of the version of the processor implementation
 typedef logic [31:0] mhartid_t;
+parameter mhartid_t MHARTID_INIT = '0; // the hardware thread running the code
 
+// !when a trap is taken from mode Y to mode X, XPIE is set to XIE, and XIE is set to 0, and XPP is set to Y, `cpu_mode` is set to X
+// !when a XRET(mret, sret) is executed, if XPP is Y originally: XIE is set to XPIE, `cpu_mode` is set to Y, XPIE is set to 1, XPP is set to U. (if Y is M, XRET also set MPRV to 0)
 typedef struct packed {
     logic sd;
     logic [7:0] _wpri0;
-    logic tsr;
-    logic tw;
-    logic tvm;
-    logic mxr;
-    logic sum;
-    logic mprv; // reset to 0
+    logic tsr; // if tsr=1, attempts to execute a `sret` in S-mode raise a illegal inst exception. if tsr=0, this operation is permitted.
+    logic tw;  // if tw=0, `wfi` inst can execute in lower priviledge modes. if tw=1, `wfi` cannot execute in U and S modes. 
+    logic tvm; // if tvm=1, attempts to read or write `satp` or execute a `sfence.vma` inst in S-mode will raise an illegal instruction exception. if tvm=0, these operations are permitted.
+    logic mxr; // if mxr=0, only loads from pages marked R will succ. if mxr=1, loads from pages marked R or X will succ.
+    logic sum; // if sum=0, S-mode memory access to pages marked U will fault. when sum=1, these accessed are permitted. (sum also takes effect when MPRV=1 and MPP=S)
+    logic mprv; // reset to 0, if mprv=0, loads and stores behave as normal. if mprv=1, loads and stores behave as cpu_mode=MPP
     logic [1:0] xs;
     logic [1:0] fs;
-    logic [1:0] mpp;
+    logic [1:0] mpp; // previous privilege mode (can hold mode M, S, U)
     logic [1:0] _wpri1;
-    logic spp;
-    logic mpie;
-    logic ube;
-    logic spie;
+    logic spp; // previous privilege mode (can hold mode S, U)
+    logic mpie; // the value of mie prior to a trap
+    logic ube; // L/S accesses from U-mode is little-endian(ube=0) or big-endian(ube=1), (sbe also takes effect when MPRV=1 and MPP=U)
+    logic spie; // the value of sie prior to a trap
     logic _wpri2;
-    logic mie; // reset to 0
+    logic mie; // reset to 0, machine mode interrput global enable
     logic _wpri3;
-    logic sie;
+    logic sie; // supervisor mode interrput global enable
     logic _wpri4;
 } mstatus_t;
+// TODO: read spec and confirm these values
+parameter mstatus_t MSTATUS_INIT = {
+    1'b0, // sd
+    8'b0, // WPRI
+    1'b0, // tsr
+    1'b0, // tw
+    1'b0, // tvm
+    1'b0, // mxr 
+    1'b0, // sum
+    1'b0, // mprv
+    2'b00, // xs
+    2'b00, // fs
+    
+    2'b11, // mpp
+    
+    2'b00, // WPRI
+    1'b0, // spp
+    
+    1'b0, // mpie
+    1'b0, // ube
+    1'b0, // spie
+    1'b0, // WPRI
+    
+    1'b0, // mie
+    1'b0, // WPRI
+    1'b0, // sie
+    1'b0 // WPRI
+};
+parameter mstatus_t MSTATUS_WMASK = {
+    1'b0, // sd
+    8'b0, // WPRI
+    1'b0, // tsr
+    1'b0, // tw
+    1'b0, // tvm
+    1'b0, // mxr 
+    1'b0, // sum
+    1'b0, // mprv
+    2'b00, // xs
+    2'b00, // fs
+    2'b00, // mpp
+    2'b00, // WPRI
+    1'b0, // spp
+    1'b0, // mpie
+    1'b0, // ube
+    1'b0, // spie
+    1'b0, // WPRI
+    1'b0, // mie
+    1'b0, // WPRI
+    1'b0, // sie
+    1'b0 // WPRI
+};
 
+// ! `sbe` and `ube` can just be a copy of `mbe`
 typedef struct packed {
     logic [25:0] _wpri0;
-    logic mbe;
-    logic sbe;
+    logic mbe; // L/S accesses from M-mode is little-endian(ube=0) or big-endian(ube=1)
+    logic sbe; // L/S accesses from S-mode is little-endian(ube=0) or big-endian(ube=1), (sbe also takes effect when MPRV=1 and MPP=S)
     logic [3:0] _wpri1;
 } mstatush_t;
+parameter mstatush_t MSTATUSH_INIT = {
+    26'b0, // WPRI
+    1'b0, // mbe
+    1'b0, // sbe
+    4'b0 // WPRI
+};
+parameter mstatush_t MSTATUSH_WMASK = {
+    26'b0, // WPRI
+    1'b0, // mbe
+    1'b0, // sbe
+    4'b0 // WPRI
+};
 
 typedef struct packed {
     logic [19:0] _zero0;
@@ -78,6 +205,12 @@ typedef struct packed {
     logic ssip;
     logic _zero6;
 } mip_t;
+parameter mip_t MIP_INIT = {
+
+};
+parameter mip_t MIP_WMASK = {
+
+};
 
 typedef struct packed {
     logic [19:0] _zero0;
@@ -94,24 +227,35 @@ typedef struct packed {
     logic ssie;
     logic _zero6;
 } mie_t;
+parameter mie_t MIE_INIT = {};
+parameter mie_t MIE_WMASK = {};
 
 typedef struct packed {
     logic interrupt;
     logic [30:0] exception_code;
 } mcause_t;
+parameter mcause_t MCAUSE_INIT = {};
+parameter mcause_t MCAUSE_WMASK = {};
 
 typedef struct packed {
     logic [29:0] base;
     logic [1:0] mode;
 } mtvec_t;
+parameter mtvec_t MTVEC_INIT = {};
+parameter mtvec_t MTVEC_WMASK = {};
 
 typedef logic [31:0] mcounteren_t; // hpm31...hpm3 | ir | tm | cy
-typedef logic [31:0] mcountinhibit_t;
+parameter mcounteren_t MCOUNTEREN_WMASK = '1;
 typedef logic [31:0] medeleg_t;
+parameter medeleg_t MEDELEG_WMASK = '1;
 typedef logic [31:0] mideleg_t;
+parameter mideleg_t MIDELEG_WMASK = '1;
 typedef logic [31:0] mepc_t;
+parameter mepc_t MEPC_WMASK = '1;
 typedef logic [31:0] mtval_t;
+parameter mepc_t MTVAL_WMASK = '1;
 typedef logic [31:0] mscratch_t;
+parameter mscratch_t MSCRACH_WMASK = '1;
 typedef logic [31:0] mconfigptr_t;
 typedef struct packed { // 64bit but can only be accessed by 2 csr access insts.
     logic mtce;
@@ -124,7 +268,7 @@ typedef struct packed { // 64bit but can only be accessed by 2 csr access insts.
     logic fiom;
 } menvcfg_t; // !NOTE: {menvcfgh, menvcfg}(RV32) = menvcfg (RV64);
 typedef struct packed {
-    logic [21:0] _wpri0;
+    logic [53:0] _wpri0;
     logic sseed;
     logic useed;
     logic [4:0] _wpri1;
@@ -132,7 +276,12 @@ typedef struct packed {
     logic mmwp;
     logic mml;
 } mseccfg_t;
-
+typedef logic [63:0] mcycle_t;
+typedef logic [63:0] minstret_t;
+typedef logic [63:0] mhpmcounter_t;
+typedef logic [31:0] mhpmevent_t;
+typedef logic [63:0] mtime_t;
+typedef logic [63:0] mtimecmp_t;
 
 // PMP CSRs
 // implementations may implement 0, 16 or 64 PMP entries (a.k.a 0, 4 or 16 PMP CSRs)
@@ -286,21 +435,87 @@ typedef enum [2:0] {
 
 // Floating Point CSR
 typedef struct packed {
-    logic [24:0] _zero;
-    logic [2:0] frm;
-    // fflags
     logic _NV; // INVALID OPERATION
     logic _DZ; // DIVIDE by ZERO
     logic _OF; // Overflow
     logic _UF; // Underflow
     logic _NX; // Inexact
+} fflags_t;
+
+typedef struct packed {
+    logic [24:0] _zero;
+    logic [2:0] frm;
+    fflags_t fflags;
 } fcsr_t;
 
+// !seed must be accessed with a read-write instruction
+// A  read-only  instruction  such  as  CSRRS/CSRRC with rs1=x0 or CSRRSI/CSRRCI with uimm=0 will raise an illegal instruction exception.
+// The  seed  CSR  is  by  default  only  available  in  M  mode,  but  can  be  made  available  to  other  modes  via  the mseccfg.sseed and mseccfg.useed access control bits.
 typedef struct packed {
     logic [1:0] opst; // BIST(00), WAIT(01), ES16(10), DEAD(11)
     logic [5:0] _zero;
     logic [7:0] custom; // Designated for custom and experimental use.
     logic [15:0] entropy; // 16 bits of randomness, only when OPST=ES16.
 } seed_t;
+
+// User Level CSRs (not implemented)
+typedef logic [31:0] uepc_t;
+
+typedef struct packed {
+    // Unprivileged CSRs
+    seed_t seed;
+    fcsr_t fcsr;
+    // mcycle_t mcycle; // 64 bit
+    // mtime_t mtime; // 64 bits
+    // minstret_t minstret; // 64 bit
+    mhpmcounter_t [31:0] mhpmcounters; // 64 bit per reg. [0] is mcycle, [1] is mtime, [2] is minstret.
+    mhpmevent_t [31:0] mhpmevents; // MXLEN bit
+    mtimecmp_t mtimecmp; // 64 bits
+    
+    // supervisor-level CSRs
+    // !sstatus is a R/W shadow of mstatus
+    // sstatus_t sstatus;
+    // !sie is a R/W shadow of mie
+    // sie_t sie;
+    // !sip is a R/W shadow of mip
+    // sip_t sip;
+    stvec_t stvec;
+    scounteren_t scounteren;
+    senvcfg_t senvcfg;
+    sscratch_t sscratch;
+    sepc_t spec;
+    scause_t scause;
+    stval_t stval;
+    satp_t satp;
+
+    // machine-level CSRs
+    // machine information regs
+    mvendorid_t mvendorid;
+    marchid_t marchid;
+    mimpid_t mimpid;
+    mhartid_t mhartid;
+    mconfigptr_t mconfigptr;
+    // machine trap setup
+    mstatus_t mstatus;
+    misa_t misa;
+    medeleg_t medeleg;
+    mideleg_t mideleg;
+    mie_t mie;
+    mtvec_t mtvec;
+    mcounteren_t mcounteren;
+    mstatush_t mstatush;
+    // machine trap handling
+    mscratch_t mscratch;
+    mepc_t mepc;
+    mcause_t mcause;
+    mtval_t mtval;
+    mip_t mip;
+    // machine configuration
+    menvcfg_t menvcfg; // 64bit
+    mseccfg_t mseccfg; // 64bit
+    // machine memory protection
+    pmpcfg_t [3:0] pmpcfgs; // index is 2 bit width
+    pmpaddr_t [15:0] pmpaddrs; // index is 4 bit width
+} csr_t;
 
 endpackage

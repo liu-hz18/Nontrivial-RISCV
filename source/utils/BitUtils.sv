@@ -21,6 +21,8 @@ parameter int NUM_FPRS = 32;
 parameter FPR_INDEX_WIDTH = $clog2(NUM_FPRS);
 typedef logic [FPR_INDEX_WIDTH-1:0] fpr_addr_t;
 
+parameter CSR_INDEX_WIDTH = 12;
+typedef logic [CSR_INDEX_WIDTH-1:0] csraddr_t;
 
 function word_t rol32_byte(input word_t x, input logic[1:0] bs);
     word_t result;

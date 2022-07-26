@@ -30,7 +30,7 @@ typedef enum {
     // RV32 Zicsr Extension csr R/W ops
     OP_CSRRW, OP_CSRRS, OP_CSRRC, OP_CSRRWI, OP_CSRRSI, OP_CSRRCI,
     
-    // TODO: RV32M Extension
+    // RV32M Extension
     OP_MUL, OP_MULH, OP_MULHSU, OP_MULHU,
     OP_DIV, OP_DIVU, OP_REM, OP_REMU,
     
@@ -49,13 +49,14 @@ typedef enum {
     OP_SEXTB, OP_SEXTH, OP_ZEXTH,
     OP_ROL, OP_ROR, OP_RORI,
     OP_ORCB, OP_REV8,
-    // TODO: RV32 Zbc Extension (ALSO IN RV32 Zbkc Extension)
+    // RV32 Zbc Extension (ALSO IN RV32 Zbkc Extension)
     OP_CLMUL, OP_CLMULH, OP_CLMULR,
     // RV32 Zbs Extension
     OP_BCLR, OP_BCLRI, OP_BEXT, OP_BEXTI, 
     OP_BINV, OP_BINVI, OP_BSET, OP_BSETI,
 
-    // TODO: RV32F Extension (Single Presicion)
+    // RV32F Extension (Single Presicion)
+    // F L/S insts
     OP_FLWS, OP_FSWS,
     OP_FMADDS, OP_FMSUBS, OP_FNMSUBS, OP_FNMADDS,
     OP_FADDS, OP_FSUBS, OP_FMULS, OP_FDIVS, OP_FSQRTS,
