@@ -12,7 +12,7 @@ typedef enum logic[1:0] {
     RETURN
 } btb_type_t;
 
-typedef struct packed {
+typedef struct {
     logic valid;
     word_t pc;
     logic is_miss_predict;
@@ -25,7 +25,7 @@ typedef struct packed {
     logic same_link_regs;
 } bpu_update_req_t;
 
-typedef struct packed {
+typedef struct {
     word_t pc;
     logic valid;
 } bpu_query_req_t;
@@ -44,7 +44,7 @@ typedef  struct packed {
 // self-defined Bus Signals.
 // do handshake using `valid` and `ready` signal.
 // �? word �?1个传输单位，支持突发读写，最多突�? 16 word 突发读写
-typedef struct packed {
+typedef struct {
     // write passage
     // W addr passage
     logic awvalid;
@@ -67,7 +67,7 @@ typedef struct packed {
     logic rready;
 } bus_query_req_t;
 
-typedef struct packed {
+typedef struct {
     // write passage
     // W addr passage
     logic awready;
@@ -84,7 +84,7 @@ typedef struct packed {
     word_t rdata;
 } bus_query_resp_t;
 
-typedef struct packed {
+typedef struct {
     logic is_branch_jump;
     logic is_branch;
     logic is_call;
@@ -100,7 +100,7 @@ typedef struct packed {
     logic is_sc;
 } inst_type_t;
 
-typedef struct packed {
+typedef struct {
     logic valid;
     word_t pc;
     word_t inst;
@@ -129,7 +129,7 @@ typedef struct packed {
     logic [2:0] fp_rounding_mode;
 } frontend_packet_t;
 
-typedef struct packed {
+typedef struct {
     logic gpr_we;
     gpr_addr_t gpr_waddr;
     word_t gpr_wdata;
@@ -140,7 +140,7 @@ typedef struct packed {
     logic need_load;
 } bypass_t;
 
-typedef struct packed {
+typedef struct {
     logic load, store;
     logic [3:0] mask;
     word_t addr;
