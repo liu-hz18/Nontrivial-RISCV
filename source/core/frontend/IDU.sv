@@ -163,6 +163,9 @@ module IDU #(
 ) (
     input word_t inst,
 
+    input csr_t csr,
+    input cpu_mode_t cpu_mode,
+
     output op_t op,
     output word_t imm,
     output logic[4:0] shamt,
@@ -236,6 +239,9 @@ assign inst_type.is_store = (opcode == OPCODE_STORE) || (opcode == OPCODE_FSTORE
 assign inst_type.is_amo = (opcode == OPCODE_AMO) && (~funct7[3]);
 assign inst_type.is_lr = (opcode == OPCODE_AMO) && (funct7[6:2] == 5'b00010);
 assign inst_type.is_sc = (opcode == OPCODE_AMO) && (funct7[6:2] == 5'b00011);
+assign inst_type.is_fpu_inst = (opcode == OPCODE_FLOAD) | (opcode == OPCODE_FSTORE) | (opcode == OPCODE_FMADD) | (opcode == OPCODE_FMSUB) | (opcode == OPCODE_FNMSUB) | (opcode == OPCODE_FNMADD) | (opcode == OPCODE_FLOAT);
+assign inst_type.read_csr = ((opcode == OPCODE_SYSTEM) && (funct3[1:0] == 2'b01) && (rd != 5'b0));
+assign inst_type.write_csr = ((opcode == OPCODE_SYSTEM) && ((funct3[2:1] == 2'b01) && (rs1 != 5'b0)) | ((funct3[2:1] == 2'b11) && (csrtype_imm != '0)));
 
 // decoder
 always_comb begin
@@ -469,19 +475,25 @@ always_comb begin
                 unique case(rs2)
                 5'b00000: `INST_R(OP_ECALL, 5'b0, 5'b0) // ecall
                 5'b00001: `INST_R(OP_EBREAK, 5'b0, 5'b0) // ebreak
-                5'b00010: `INST_R(OP_URET, 5'b0, 5'b0) // uret
+                // 5'b00010: `INST_R(OP_URET, 5'b0, 5'b0) // uret, not supported yet.
                 default: `INST_R(OP_INVALID, 5'b0, 5'b0)
                 endcase
             end
             7'b0001000: begin // sret, wfi
                 unique case(rs2)
-                5'b00010: `INST_R(OP_SRET, 5'b0, 5'b0) // sret
+                5'b00010: begin
+                    if (csr.mstatus.tsr && (cpu_mode == MODE_S)) `INST_R(OP_INVALID, 5'b0, 5'b0)
+                    else `INST_R(OP_SRET, 5'b0, 5'b0) // sret
+                end
                 5'b00101: `INST_R(OP_WFI, 5'b0, 5'b0) // wfi
                 default: `INST_R(OP_INVALID, 5'b0, 5'b0)
                 endcase
             end
             7'b0011000: `INST_R(OP_MRET, 5'b0, 5'b0) // mret, pc <- mepc
-            7'b0001001: `INST_R(OP_SFENCE, 5'b0, 5'b0) // sfence.vma
+            7'b0001001: begin
+                if (csr.mstatus.tvm && (cpu_mode == MODE_S)) `INST_R(OP_INVALID, 5'b0, 5'b0)
+                else `INST_R(OP_SFENCE, 5'b0, 5'b0) // sfence.vma
+            end
             default: `INST_R(OP_INVALID, 5'b0, 5'b0)
             endcase
         end
@@ -514,80 +526,89 @@ always_comb begin
     // RV32F Extension
     OPCODE_FLOAD: begin
         imm = itype_imm;
-        `FINST_LOAD(OP_FLWS, rs1, rd)
+        if (csr.mstatus.fs == 2'b00) `INST_R(OP_INVALID, 5'b0, 5'b0)
+        else `FINST_LOAD(OP_FLWS, rs1, rd)
     end
     OPCODE_FSTORE: begin
         imm = stype_imm;
-        `FINST_STORE(OP_FSWS, rs1, rs2)
+        if (csr.mstatus.fs == 2'b00) `INST_R(OP_INVALID, 5'b0, 5'b0)
+        else `FINST_STORE(OP_FSWS, rs1, rs2)
     end
     OPCODE_FMADD: begin
-        `FINST_READ3(OP_FMADDS, rs1, rs2, rs3, 1'b1, rd, rm)
+        if (csr.mstatus.fs == 2'b00) `INST_R(OP_INVALID, 5'b0, 5'b0)
+        else `FINST_READ3(OP_FMADDS, rs1, rs2, rs3, 1'b1, rd, rm)
     end
     OPCODE_FMSUB: begin
-        `FINST_READ3(OP_FMSUBS, rs1, rs2, rs3, 1'b1, rd, rm)
+        if (csr.mstatus.fs == 2'b00) `INST_R(OP_INVALID, 5'b0, 5'b0)
+        else `FINST_READ3(OP_FMSUBS, rs1, rs2, rs3, 1'b1, rd, rm)
     end
     OPCODE_FNMSUB: begin
-        `FINST_READ3(OP_FNMSUBS, rs1, rs2, rs3, 1'b1, rd, rm)
+        if (csr.mstatus.fs == 2'b00) `INST_R(OP_INVALID, 5'b0, 5'b0)
+        else `FINST_READ3(OP_FNMSUBS, rs1, rs2, rs3, 1'b1, rd, rm)
     end
     OPCODE_FNMADD: begin
-        `FINST_READ3(OP_FNMADDS, rs1, rs2, rs3, 1'b1, rd, rm)
+        if (csr.mstatus.fs == 2'b00) `INST_R(OP_INVALID, 5'b0, 5'b0)
+        else `FINST_READ3(OP_FNMADDS, rs1, rs2, rs3, 1'b1, rd, rm)
     end
     OPCODE_FLOAT: begin
-        unique case(funct7)
-        7'b0000000: `FINST_READ2(OP_FADDS, rs1, rs2, 1'b1, rd, rm)
-        7'b0000100: `FINST_READ2(OP_FSUBS, rs1, rs2, 1'b1, rd, rm)
-        7'b0001000: `FINST_READ2(OP_FMULS, rs1, rs2, 1'b1, rd, rm)
-        7'b0001100: `FINST_READ2(OP_FDIVS, rs1, rs2, 1'b1, rd, rm)
-        7'b0101100: `FINST_READ1(OP_FSQRTS, rs1, 1'b1, rd, rm)
-        7'b0010000: begin
-            unique case(funct3)
-            3'b000: `FINST_READ2(OP_FSGNJS, rs1, rs2, 1'b1, rd, 3'b000)
-            3'b001: `FINST_READ2(OP_FSGNJNS, rs1, rs2, 1'b1, rd, 3'b000)
-            3'b010: `FINST_READ2(OP_FSGNJXS, rs1, rs2, 1'b1, rd, 3'b000)
+        if (csr.mstatus.fs == 2'b00) `INST_R(OP_INVALID, 5'b0, 5'b0)
+        else begin
+            unique case(funct7)
+            7'b0000000: `FINST_READ2(OP_FADDS, rs1, rs2, 1'b1, rd, rm)
+            7'b0000100: `FINST_READ2(OP_FSUBS, rs1, rs2, 1'b1, rd, rm)
+            7'b0001000: `FINST_READ2(OP_FMULS, rs1, rs2, 1'b1, rd, rm)
+            7'b0001100: `FINST_READ2(OP_FDIVS, rs1, rs2, 1'b1, rd, rm)
+            7'b0101100: `FINST_READ1(OP_FSQRTS, rs1, 1'b1, rd, rm)
+            7'b0010000: begin
+                unique case(funct3)
+                3'b000: `FINST_READ2(OP_FSGNJS, rs1, rs2, 1'b1, rd, 3'b000)
+                3'b001: `FINST_READ2(OP_FSGNJNS, rs1, rs2, 1'b1, rd, 3'b000)
+                3'b010: `FINST_READ2(OP_FSGNJXS, rs1, rs2, 1'b1, rd, 3'b000)
+                default: `INST_R(OP_INVALID, 5'b0, 5'b0)
+                endcase
+            end
+            7'b0010100: begin
+                unique case(funct3)
+                3'b000: `FINST_READ2(OP_FMINS, rs1, rs2, 1'b1, rd, 3'b000)
+                3'b001: `FINST_READ2(OP_FMAXS, rs1, rs2, 1'b1, rd, 3'b000)
+                default: `INST_R(OP_INVALID, 5'b0, 5'b0)
+                endcase
+            end
+            7'b1100000: begin
+                unique case(rs2)
+                5'b00000: `FINST_FLOAT2FIX(OP_FCVTWS, rs1, rd, rm)
+                5'b00001: `FINST_FLOAT2FIX(OP_FCVTWUS, rs1, rd, rm)
+                default: `INST_R(OP_INVALID, 5'b0, 5'b0)
+                endcase
+            end
+            7'b1110000: begin
+                unique case(funct3)
+                3'b000: `FINST_FLOAT2FIX(OP_FMVXW, rs1, rd, 3'b000)
+                3'b001: `FINST_FLOAT2FIX(OP_FCLASSS, rs1, rd, 3'b000)
+                default: `INST_R(OP_INVALID, 5'b0, 5'b0)
+                endcase
+            end
+            7'b1010000: begin
+                unique case(funct3)
+                3'b010: `FINST_CMP(OP_FEQS, rs1, rs2, rd)
+                3'b001: `FINST_CMP(OP_FLTS, rs1, rs2, rd)
+                3'b000: `FINST_CMP(OP_FLES, rs1, rs2, rd)
+                default: `INST_R(OP_INVALID, 5'b0, 5'b0)
+                endcase
+            end
+            7'b1101000: begin
+                unique case(rs2)
+                5'b00000: `FINST_FIX2FLOAT(OP_FCVTSW, rs1, rd, rm)
+                5'b00001: `FINST_FIX2FLOAT(OP_FCVTSWU, rs1, rd, rm)
+                default: `INST_R(OP_INVALID, 5'b0, 5'b0)
+                endcase
+            end
+            7'b1111000: begin
+                `FINST_FIX2FLOAT(OP_FMVWX, rs1, rd, 3'b000)
+            end
             default: `INST_R(OP_INVALID, 5'b0, 5'b0)
             endcase
         end
-        7'b0010100: begin
-            unique case(funct3)
-            3'b000: `FINST_READ2(OP_FMINS, rs1, rs2, 1'b1, rd, 3'b000)
-            3'b001: `FINST_READ2(OP_FMAXS, rs1, rs2, 1'b1, rd, 3'b000)
-            default: `INST_R(OP_INVALID, 5'b0, 5'b0)
-            endcase
-        end
-        7'b1100000: begin
-            unique case(rs2)
-            5'b00000: `FINST_FLOAT2FIX(OP_FCVTWS, rs1, rd, rm)
-            5'b00001: `FINST_FLOAT2FIX(OP_FCVTWUS, rs1, rd, rm)
-            default: `INST_R(OP_INVALID, 5'b0, 5'b0)
-            endcase
-        end
-        7'b1110000: begin
-            unique case(funct3)
-            3'b000: `FINST_FLOAT2FIX(OP_FMVXW, rs1, rd, 3'b000)
-            3'b001: `FINST_FLOAT2FIX(OP_FCLASSS, rs1, rd, 3'b000)
-            default: `INST_R(OP_INVALID, 5'b0, 5'b0)
-            endcase
-        end
-        7'b1010000: begin
-            unique case(funct3)
-            3'b010: `FINST_CMP(OP_FEQS, rs1, rs2, rd)
-            3'b001: `FINST_CMP(OP_FLTS, rs1, rs2, rd)
-            3'b000: `FINST_CMP(OP_FLES, rs1, rs2, rd)
-            default: `INST_R(OP_INVALID, 5'b0, 5'b0)
-            endcase
-        end
-        7'b1101000: begin
-            unique case(rs2)
-            5'b00000: `FINST_FIX2FLOAT(OP_FCVTSW, rs1, rd, rm)
-            5'b00001: `FINST_FIX2FLOAT(OP_FCVTSWU, rs1, rd, rm)
-            default: `INST_R(OP_INVALID, 5'b0, 5'b0)
-            endcase
-        end
-        7'b1111000: begin
-            `FINST_FIX2FLOAT(OP_FMVWX, rs1, rd, 3'b000)
-        end
-        default: `INST_R(OP_INVALID, 5'b0, 5'b0)
-        endcase
     end
     default: `INST_R(OP_INVALID, 5'b0, 5'b0)
     endcase

@@ -119,11 +119,11 @@ typedef struct packed {
     logic mpie; // the value of mie prior to a trap
     logic ube; // L/S accesses from U-mode is little-endian(ube=0) or big-endian(ube=1), (sbe also takes effect when MPRV=1 and MPP=U)
     logic spie; // the value of sie prior to a trap
-    logic _wpri1;
+    logic upie;
     logic mie; // reset to 0, machine mode interrput global enable
-    logic _wpri2;
+    logic _wpri1;
     logic sie; // supervisor mode interrput global enable
-    logic _wpri3;
+    logic uie;
 } mstatus_t;
 parameter mstatus_t MSTATUS_INIT = {
     1'b0, // sd
@@ -145,12 +145,12 @@ parameter mstatus_t MSTATUS_INIT = {
     1'b0, // mpie
     1'b0, // ube
     1'b0, // spie
-    1'b0, // WPRI
+    1'b0, // upie
     
     1'b0, // mie
     1'b0, // WPRI
     1'b0, // sie
-    1'b0 // WPRI
+    1'b0  // uie
 };
 parameter mstatus_t MSTATUS_WMASK = {
     1'b0, // sd
@@ -169,11 +169,11 @@ parameter mstatus_t MSTATUS_WMASK = {
     1'b1, // mpie
     1'b0, // ube, we only support little-endian memory access
     1'b1, // spie
-    1'b0, // WPRI
+    1'b0, // upie
     1'b1, // mie
     1'b0, // WPRI
     1'b1, // sie
-    1'b0 // WPRI
+    1'b0  // uie
 };
 
 // ! `sbe` and `ube` can just be a copy of `mbe`
@@ -201,6 +201,10 @@ parameter mstatush_t MSTATUSH_WMASK = {
 //   1. (`cpu_mode` == M and mstatus.MIE is 1) or (`cpu_mode` != M)
 //   2. mie[i]==1 && mip[i]==1
 //   3. mideleg[i] == 0
+// interrupt `i` will trap into S-mode if these conditions are all satisfied:
+//   1. (`cpu_mode` == S and mstatus.SIE is 1) or (`cpu_mode` < S)
+//   2. sie[i] && sip[i]
+//   3. mideleg[i] == 1
 typedef struct packed {
     logic [19:0] _zero0;
     logic meip; // read-only. is set and cleared by a platform-specific interrupt controller.
@@ -242,7 +246,7 @@ typedef struct packed {
 
 typedef struct packed {
     logic [29:0] base;
-    logic [1:0] mode; // direct[all exceptions set pc to BASE](00), vectored[asynchrous interrupts set pc to BASE+4*cause] 
+    logic [1:0] mode; // direct[all exceptions set pc to BASE](00), vectored[asynchrous interrupts set pc to BASE+4*cause](01)
 } mtvec_t;
 // TODO: reset mtvec value accroding to software.
 
@@ -337,7 +341,7 @@ parameter mseccfg_t MSECCFG_WMASK = {54'b0, 2'b11, 8'b0};
 typedef logic [31:0] mcounteren_t; // hpm31...hpm3 | ir | tm | cy
 typedef logic [31:0] mcountinhibit_t; // hpm31...hpm3 | ir | tm | cy
 // typedef logic [63:0] mcycle_t;
-// typedef logic [63:0] minstret_t;
+// typedef logic [63:0] minstret_t; // ! ECALL and EBREAK donot increase `instret` reg
 typedef logic [63:0] mhpmcounter_t;
 // !we define a event selector description as flows:
 // if the corresponding bit is set in mhpmeventX selectors, mhpmcounterX is the responding meaning.
@@ -401,6 +405,8 @@ typedef logic [31:0] pmpaddr_t;
 
 // exception code in mcause
 // priority: interrupt > exception
+// !interrupt handle priority from high to low
+// mei > msi > mti > sei > ssi > sti
 // !exception handle priority from high to low
 // i-breakpoint > i-page fault > i-access fault >
 // illegal inst > inst_addr_misaligned > 
@@ -408,8 +414,6 @@ typedef logic [31:0] pmpaddr_t;
 // store-addr misaligned > load-addr misaligned >
 // store-page fault > load page fault >
 // store-access fault > load-access fault
-// !interrupt handle priority from high to low
-// mei > msi > mti > sei > ssi > sti
 // !NOTE: misaligned exception are raised by control-flow instructions (EXU), not by IFU
 `define MCAUSE_SMODE_SOFT_INT        {1'b1, 31'd1}
 `define MCAUSE_MMODE_SOFT_INT        {1'b1, 31'd3}

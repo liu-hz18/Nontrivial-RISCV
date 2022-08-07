@@ -98,6 +98,11 @@ typedef struct {
     logic is_amo;
     logic is_lr;
     logic is_sc;
+    // for illegal inst check
+    logic is_fpu_inst;
+    logic is_sret;
+    logic read_csr;
+    logic write_csr;
 } inst_type_t;
 
 typedef struct {

@@ -1,7 +1,7 @@
 package micro_ops;
 
 typedef enum {
-    OP_NOP,
+    OP_NOP = 0,
 
     // RV32I
     // I-logic ops
@@ -90,4 +90,3 @@ typedef enum {
 } op_t;
 
 endpackage
- 
