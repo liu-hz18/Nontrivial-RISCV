@@ -112,7 +112,7 @@ except_t idu_exception_tmp;
 word_t idu_except_val;
 word_t idu_bpu_predict_target;
 logic idu_bpu_predict_valid;
-always_ff @(posedge clk) begin: ifu_idu_pipeline
+always_ff @(posedge clk or posedge rst) begin: ifu_idu_pipeline
     if (rst | flush | (ifu_busy && ~(isu_busy | backend_busy))) begin
         idu_pc <= '0;
         idu_inst <= '0;
@@ -210,7 +210,7 @@ gpr_addr_t isu_gpr_raddr1, isu_gpr_raddr2;
 fpr_addr_t isu_fpr_rs1, isu_fpr_rs2, isu_fpr_rs3;
 logic isu_fpr_re1, isu_fpr_re2, isu_fpr_re3;
 
-always_ff @(posedge clk) begin: idu_isu_pipeline
+always_ff @(posedge clk or posedge rst) begin: idu_isu_pipeline
     if (rst | flush) begin
         isu_packet_tmp <= '0;
         isu_gpr_raddr1 <= '0;

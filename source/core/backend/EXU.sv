@@ -45,6 +45,13 @@ module EXU (
     // MEM control signals
     output mem_req_t mem_req,
 
+    // CSR R/W signals
+    output csraddr_t csr_raddr,
+    input word_t csr_rdata,
+    output csraddr_t csr_waddr,
+    output logic csr_we,
+    output word_t csr_wdata,
+
     // BPU update req
     output bpu_update_req_t bpu_update_req,
 
@@ -193,9 +200,9 @@ always_comb begin: gpr_alu
     OP_AUIPC:gpr_wdata = btype_target;
     OP_JAL:  gpr_wdata = pc_plus4;
     OP_JALR: gpr_wdata = pc_plus4;
-    // TODO: RV Zicsr Extension
+    // RV32 Zicsr Extension
     OP_CSRRW, OP_CSRRS, OP_CSRRC,
-    OP_CSRRWI, OP_CSRRSI, OP_CSRRCI:  gpr_wdata = '0;
+    OP_CSRRWI, OP_CSRRSI, OP_CSRRCI:  gpr_wdata = csr_rdata;
     // RV32M Extension
     OP_MUL:  gpr_wdata = mul_ss[31:0];
     OP_MULH: gpr_wdata = mul_ss[63:32];
@@ -359,8 +366,32 @@ always_comb begin: mem_ctrl
     endcase
 end
 
-// TODO: CSR read signals
-
+// CSR read signals
+assign csr_raddr = inst[31:20];
+always_comb begin: csr_rw
+    unique case (op)
+    OP_CSRRW, OP_CSRRS, OP_CSRRC,
+    OP_CSRRWI, OP_CSRRSI, OP_CSRRCI: begin
+        csr_waddr = inst[31:20];
+        csr_we = 1'b1;
+    end
+    default: begin
+        csr_waddr = '0;
+        csr_we = 1'b0;
+    end
+    endcase
+end
+always_comb begin: csr_wdata_assign
+    unique case (op)
+    OP_CSRRW: csr_wdata = gpr_rs1;
+    OP_CSRRS: csr_wdata = (csr_rdata | gpr_rs1);
+    OP_CSRRC: csr_wdata = (csr_rdata & ~gpr_rs1);
+    OP_CSRRWI: csr_wdata = imm;
+    OP_CSRRSI: csr_wdata = (csr_rdata | imm);
+    OP_CSRRCI: csr_wdata = (csr_rdata & ~imm);
+    default: csr_wdata = csr_rdata;
+    endcase
+end
 
 // exception check
 logic load_half_misaligned, load_word_misaligned;

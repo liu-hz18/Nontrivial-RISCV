@@ -21,7 +21,7 @@ typedef struct packed {
     fetch_misalign, load_misalign, store_misalign, // exu exceptions (control-flow instructions)
     ecall, // idu exceptions
     mret, sret, uret,
-    illegal_inst, breakpoint
+    illegal_inst, breakpoint;
 } except_t;
 
 endpackage

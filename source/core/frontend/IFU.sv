@@ -149,14 +149,12 @@ for (genvar i = ICACHE_NUM_WAYS-1; i >= 0; --i) begin: gen_meta_icache
     BRAM #(
         .NAME("ICACHE_META"),
         .LINE_WIDTH(ICACHE_META_WIDTH), // tag | valid
-        .DATA_WIDTH(ICACHE_META_WIDTH),
         .DEPTH(ICACHE_NUM_SETS)
     ) icache_meta (
         .clk(clk),
         .rst(rst),
         // write port
         .wen(icache_meta_wens[i]),
-        .wmask(1'b1), // we dont need mask because there's only one data(tag|valid) in each line
         .waddr(icache_meta_waddr),
         .wline(icache_meta_wline),
         // read port 
@@ -181,14 +179,12 @@ for (genvar i = ICACHE_NUM_WAYS-1; i >= 0; --i) begin: gen_data_icache
     BRAM #(
         .NAME("ICACHE_DATA"),
         .LINE_WIDTH(ICACHE_LINE_WIDTH), // a cache block
-        .DATA_WIDTH(ICACHE_LINE_WIDTH), // a word
         .DEPTH(ICACHE_NUM_SETS)
     ) icache_data (
         .clk(clk),
         .rst(rst),
         // write port
         .wen(icache_data_wens[i]),
-        .wmask(1'b1),
         .waddr(icache_data_waddr),
         .wline(icache_data_wline),
         // read port 
@@ -292,14 +288,12 @@ for (genvar i = ITLB_NUM_WAYS-1; i >= 0; --i) begin: gen_itlb
     BRAM #(
         .NAME("ITLB"),
         .LINE_WIDTH($bits(itlb_entry_t)),
-        .DATA_WIDTH($bits(itlb_entry_t)),
         .DEPTH(ITLB_NUM_SETS)
     ) itlb (
         .clk(clk),
         .rst(rst),
         // write port
         .wen(itlb_wens[i]),
-        .wmask(1'b1),
         .waddr(itlb_waddr),
         .wline(itlb_wline),
         // read port
@@ -580,7 +574,7 @@ icache_line_t icache_line_receved;
 
 
 pte_t pte1_latch, pte2_latch; // is valid at Vx_CHECK states.
-always_ff @(posedge clk) begin: latch_pte
+always_ff @(posedge clk or posedge rst) begin: latch_pte
     if (rst | flush) begin
         pte1_latch <= '0;
         pte2_latch <= '0;

@@ -57,7 +57,7 @@ assign access_at_illegal_mode = (cpu_mode < waddr[9:8]) | (cpu_mode < raddr[9:8]
 assign access_satp_illegal = (csr_now.mstatus.tvm && cpu_mode == MODE_S && (waddr == 12'h180 | raddr == 12'h180));
 assign access_hpms_illegal = (cpu_mode[1] == 1'b0) && (~csr_now.mcounteren[raddr[4:0]] && raddr[11:8] == 4'hc);
 assign access_seed_illegal = (~we && raddr == 12'h015) | (we && waddr == 12'h015 && ((~csr_now.mseccfg.sseed && cpu_mode == MODE_S) | (~csr_now.mseccfg.useed && cpu_mode == MODE_U)));
-assign sret_forbidden = exception.sret & csr_now.mstatus.tsr;
+assign sret_forbidden = (exception.sret & csr_now.mstatus.tsr) | (exception.sret && cpu_mode < MODE_S);
 assign illegal_inst = exception.illegal_inst | write_read_only_csr | access_at_illegal_mode | access_satp_illegal | access_hpms_illegal | access_seed_illegal | sret_forbidden;
 
 except_t final_exception;
@@ -417,6 +417,7 @@ end
 always_ff @(posedge clk or posedge rst) begin: csr_reset_and_update
     if (rst) begin
         // csrs reset value
+        csr_now.uepc <= '0;
         csr_now.fcsr <= '0;
         csr_now.seed <= '0;
         csr_now.mhpmcounters <= '0;
@@ -426,7 +427,7 @@ always_ff @(posedge clk or posedge rst) begin: csr_reset_and_update
         csr_now.scounteren <= '0;
         csr_now.senvcfg <= '0;
         csr_now.sscratch <= '0;
-        csr_now.spec <= '0;
+        csr_now.sepc <= '0;
         csr_now.scause <= '0;
         csr_now.stval <= '0;
         csr_now.satp <= '0;

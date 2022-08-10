@@ -55,7 +55,6 @@ for (genvar i = 0; i < NUM_WAYS; ++i) begin: gen_meta_cache
         .rst(rst),
         // write port
         .wen(),
-        .wmask(),
         .waddr(),
         .wline(),
         // read port 
@@ -76,7 +75,6 @@ for (genvar i = 0; i < NUM_WAYS; ++i) begin: gen_data_cache
         .rst(rst),
         // write port
         .wen(),
-        .wmask(),
         .waddr(),
         .wline(),
         // read port 

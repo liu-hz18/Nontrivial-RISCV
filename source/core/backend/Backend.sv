@@ -28,7 +28,18 @@ module Backend (
     output word_t fpr_wdata,
     output logic fpr_we,
 
-    // TODO: to & from CSR
+    // to & from CSR
+    output csraddr_t csr_raddr,
+    input word_t csr_rdata,
+    output csraddr_t csr_waddr,
+    output logic csr_we,
+    output word_t csr_wdata,
+    // to CSR
+    output except_t exception,
+    output word_t mem_inst,
+    output word_t mem_pc,
+    output mem_req_t mem_req,
+    output inst_type_t mem_inst_type,
 
     // to bus
     output bus_query_req_t bus_req,
@@ -43,6 +54,18 @@ mem_req_t exu_mem_req;
 logic exu_redirect_valid;
 word_t exu_redirect_pc;
 except_t exu_exception;
+
+csraddr_t exu_csr_raddr, exu_csr_waddr;
+word_t exu_csr_wdata;
+logic exu_csr_we;
+
+csraddr_t lsu_csr_waddr;
+word_t lsu_csr_wdata;
+logic lsu_csr_we;
+assign csr_raddr = exu_csr_raddr;
+assign csr_waddr = lsu_csr_waddr;
+assign csr_we = lsu_csr_we;
+assign csr_wdata = lsu_csr_wdata;
 
 logic lsu_flush;
 word_t lsu_redirect_pc;
@@ -99,6 +122,12 @@ EXU EXU (
     .fpr_wdata(exu_fpr_wdata),
     // MEM control signals
     .mem_req(exu_mem_req),
+    // CSR R/W signals
+    .csr_raddr(exu_csr_raddr),
+    .csr_rdata(csr_rdata),
+    .csr_waddr(exu_csr_waddr),
+    .csr_we(exu_csr_we),
+    .csr_wdata(exu_csr_wdata),
     // BPU update req
     .bpu_update_req(bpu_update_req),
     // PC update req
@@ -110,11 +139,12 @@ EXU EXU (
 
 assign lsu_flush = 1'b0;
 assign lsu_busy = 1'b0;
-assign bus_req = 1'b0;
+assign bus_req = '0;
 
 op_t lsu_op;
 word_t lsu_inst;
 word_t lsu_pc;
+inst_type_t lsu_inst_type;
 gpr_addr_t lsu_gpr_waddr;
 word_t lsu_gpr_wdata;
 logic lsu_gpr_we;
@@ -135,7 +165,7 @@ assign lsu_bypass.fpr_wdata = lsu_fpr_wdata;
 assign lsu_bypass.need_load = lsu_mem_req.load;
 
 // EXU LSU pipeline
-always_ff @(posedge clk) begin: exu_lsu_pipeline
+always_ff @(posedge clk or posedge rst) begin: exu_lsu_pipeline
     if (rst | lsu_flush | (exu_busy && ~lsu_busy)) begin
         lsu_op <= OP_NOP;
         lsu_inst <= { 25'b0, 7'b0010011 };
@@ -148,10 +178,14 @@ always_ff @(posedge clk) begin: exu_lsu_pipeline
         lsu_fpr_we <= '0;
         lsu_exception_tmp <= '0;
         lsu_mem_req <= '0;
+        lsu_csr_we <= '0;
+        lsu_csr_waddr <= '0;
+        lsu_csr_wdata <= '0;
     end else if (~exu_busy && ~lsu_busy) begin
         lsu_op <= packet.op;
         lsu_inst <= packet.inst;
         lsu_pc <= packet.pc;
+        lsu_inst_type <= packet.inst_type;
         lsu_gpr_waddr <= packet.gpr_rd;
         lsu_gpr_wdata <= exu_gpr_wdata;
         lsu_gpr_we <= packet.gpr_we & (~(|exu_exception));
@@ -160,10 +194,21 @@ always_ff @(posedge clk) begin: exu_lsu_pipeline
         lsu_fpr_we <= packet.fpr_we & (~(|exu_exception));
         lsu_exception_tmp <= exu_exception;
         lsu_mem_req <= exu_mem_req;
+        lsu_csr_we <= exu_csr_we;
+        lsu_csr_waddr <= exu_csr_waddr;
+        lsu_csr_wdata <= exu_csr_wdata;
     end
 end
 
+// TODO: give correct `lsu_exception`
 assign lsu_exception = lsu_exception_tmp;
+
+
+assign exception = lsu_exception;
+assign mem_inst = lsu_inst;
+assign mem_pc = lsu_pc;
+assign mem_req = lsu_mem_req;
+assign mem_inst_type = lsu_inst_type;
 
 op_t wbu_op;
 word_t wbu_inst;
@@ -175,7 +220,7 @@ fpr_addr_t wbu_fpr_waddr;
 word_t wbu_fpr_wdata;
 logic wbu_fpr_we;
 // LSU WBU pipeline
-always_ff @(posedge clk) begin: lsu_wbu_pipeline
+always_ff @(posedge clk or posedge rst) begin: lsu_wbu_pipeline
     if (rst | lsu_busy) begin
         wbu_op <= OP_NOP;
         wbu_inst <= { 25'b0, 7'b0010011 };

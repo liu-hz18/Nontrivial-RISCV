@@ -66,14 +66,12 @@ logic btb_write_en;
 BRAM #(
     .NAME("BPU_BTB"),
     .LINE_WIDTH($bits(btb_entry_t)),
-    .DATA_WIDTH($bits(btb_entry_t)),
     .DEPTH(NUM_BTB_SETS)
 ) btb (
     .clk(clk),
     .rst(rst),
     
     .wen(btb_write_en),
-    .wmask(1'b1),
     .waddr(btb_write_addr),
     .wline(btb_write_data),
     

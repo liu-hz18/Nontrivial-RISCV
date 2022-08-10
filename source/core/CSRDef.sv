@@ -7,12 +7,11 @@ package csr_def;
 
 import bitutils::*;
 
-typedef enum logic[1:0] {
-    MODE_U = 0, // 00
-    MODE_S = 1, // 01
-    MODE_H = 2, // Hypervisor
-    MODE_M = 3  // 11
-} cpu_mode_t;
+typedef logic [1:0] cpu_mode_t;
+parameter cpu_mode_t MODE_U = 2'b00;
+parameter cpu_mode_t MODE_S = 2'b01;
+parameter cpu_mode_t MODE_H = 2'b10;
+parameter cpu_mode_t MODE_M = 2'b11;
 
 // Machine Mode CSRs
 typedef struct packed {
@@ -614,6 +613,7 @@ typedef logic [31:0] uepc_t;
 
 typedef struct {
     // Unprivileged CSRs
+    uepc_t uepc;
     seed_t seed;
     fcsr_t fcsr;
     // mcycle_t mcycle; // 64 bit
@@ -634,7 +634,7 @@ typedef struct {
     scounteren_t scounteren;
     senvcfg_t senvcfg;
     sscratch_t sscratch;
-    sepc_t spec;
+    sepc_t sepc;
     scause_t scause;
     stval_t stval;
     satp_t satp;

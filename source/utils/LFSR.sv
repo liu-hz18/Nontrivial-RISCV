@@ -12,7 +12,7 @@ module LFSR64 #(
 logic _xor;
 assign _xor = lfsr[0] ^ lfsr[1] ^ lfsr[3] ^ lfsr[4];
 
-always_ff @(posedge clk) begin
+always_ff @(posedge clk or posedge rst) begin
     if (rst) begin
         lfsr <= RANDOM_SEED;
     end else if (update) begin

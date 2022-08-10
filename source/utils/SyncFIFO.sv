@@ -11,8 +11,8 @@ module SyncFIFO #(
     // write port
     input logic push,
     input logic [LINE_WIDTH-1:0] push_data,
-
     input logic pop,
+
     // read port
     output logic [LINE_WIDTH-1:0] head_data,
 
@@ -31,10 +31,6 @@ logic [FIFO_INDEX_WIDTH-1+1:0] rp, wp;
 
 assign full = (rp[FIFO_INDEX_WIDTH] ^ wp[FIFO_INDEX_WIDTH]) && (rp[FIFO_INDEX_WIDTH-1:0] == wp[FIFO_INDEX_WIDTH-1:0]);
 assign empty = (rp == wp);
-
-
-// read port
-assign head_data = arr[rp[FIFO_INDEX_WIDTH-1:0]];
 
 // write port
 always_ff @(posedge clk) begin
@@ -58,5 +54,16 @@ always_ff @(posedge clk or posedge rst) begin
         rp <= rp + 1;
     end
 end
+
+// !FIXIT: fifo read logic is wrong
+// read port
+assign head_data = arr[rp[FIFO_INDEX_WIDTH-1:0]];
+// always_ff @(posedge clk or posedge rst) begin
+//     if (rst | flush) begin
+//         head_data <= '0;
+//     end else if (pop & ~empty) begin
+//         head_data <= arr[rp[FIFO_INDEX_WIDTH-1:0]];
+//     end
+// end
 
 endmodule

@@ -1,6 +1,7 @@
 // CPU Core
 import bitutils::*;
 import bundle::*;
+import csr_def::*;
 
 module CpuCore #(
     // bpu parameters
@@ -32,13 +33,17 @@ module CpuCore #(
 
 
 logic flush;
-logic fifo_full;
 word_t redirect_pc;
+logic exu_flush, csr_flush;
+word_t exu_redirect_pc, csr_redirect_pc;
+assign flush = exu_flush | csr_flush;
+assign redirect_pc = csr_flush ? csr_redirect_pc : exu_redirect_pc;
+
+logic fifo_full;
 bpu_update_req_t bpu_update_req;
 
-satp_t csr_satp;
-sstatus_t csr_sstatus;
-cpu_mode_t cpu_mode;
+csr_t csr;
+cpu_mode_t cpu_mode, lsu_cpu_mode_view;
 
 logic gpr_we;
 gpr_addr_t gpr_waddr;
@@ -76,8 +81,8 @@ Frontend #(
     .redirect_pc(redirect_pc),
     .bpu_update_req(bpu_update_req),
 
-    .csr_satp(csr_satp),
-    .csr_sstatus(csr_sstatus),
+    .csr_satp(csr.satp),
+    .csr_sstatus(csr.mstatus & SSTATUS_RMASK),
     .cpu_mode(cpu_mode),
 
     .frontend_packet(frontend_packet),
@@ -146,6 +151,7 @@ logic fifo_pop;
 logic fifo_empty;
 frontend_packet_t fifo_head_tmp, fifo_head;
 assign fifo_pop = ~backend_busy;
+// !FIXIT: fifo read logic is wrong
 always_comb begin
     if (fifo_empty) begin
         fifo_head = '0;
@@ -176,6 +182,14 @@ SyncFIFO #(
     .empty(fifo_empty)
 );
 
+
+csraddr_t csr_raddr, csr_waddr;
+word_t csr_rdata, csr_wdata;
+logic csr_we;
+except_t exception;
+word_t mem_inst, mem_pc;
+mem_req_t mem_req;
+inst_type_t mem_inst_type;
 Backend Backend (
     .clk(clk),
     .rst(rst),
@@ -183,8 +197,8 @@ Backend Backend (
     .packet(fifo_head),
     // to frontend
     .backend_busy(backend_busy),
-    .backend_flush(flush),
-    .redirect_pc(redirect_pc),
+    .backend_flush(exu_flush),
+    .redirect_pc(exu_redirect_pc),
     .bpu_update_req(bpu_update_req),
     .exu_bypass(exu_bypass),
     .lsu_bypass(lsu_bypass),
@@ -196,16 +210,50 @@ Backend Backend (
     .fpr_waddr(fpr_waddr),
     .fpr_wdata(fpr_wdata),
     .fpr_we(fpr_we),
-    // TODO: to CSR
-
+    // to & from CSR module
+    .csr_raddr(csr_raddr),
+    .csr_rdata(csr_rdata),
+    .csr_waddr(csr_waddr),
+    .csr_we(csr_we),
+    .csr_wdata(csr_wdata),
+    // to CSR
+    .exception(exception),
+    .mem_inst(mem_inst),
+    .mem_pc(mem_pc),
+    .mem_req(mem_req),
+    .mem_inst_type(mem_inst_type),
     // to bus
     .bus_req(dbus_req),
     .bus_resp(dbus_resp)
 );
 
-// TODO: backend CSR
-assign csr_satp = '0;
-assign csr_sstatus = '0;
-assign cpu_mode = MODE_M;
+// CSRs
+CSR CSR (
+    .clk(clk),
+    .rst(rst),
+    // from EX stage 
+    .raddr(csr_raddr),
+    .rdata(csr_rdata),
+    // from MEM stage
+    .waddr(csr_waddr),
+    .we(csr_we),
+    .wdata(csr_wdata),
+
+    .exception(exception),
+    .inst(mem_inst),
+    .pc(mem_pc),
+    .mem_req(mem_req),
+    .inst_type(mem_inst_type),
+
+    .timer_interrupt(timer_interrupt),
+    .external_interrupt(external_interrupt),
+
+    .csr(csr),
+    .cpu_mode(cpu_mode),
+    .lsu_cpu_mode_view(lsu_cpu_mode_view),
+
+    .flush(csr_flush),
+    .redirect_pc(csr_redirect_pc)
+);
 
 endmodule
